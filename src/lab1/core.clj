@@ -13,12 +13,11 @@
 (declare potential-difference)
 (declare potential-differences)
 (declare clear-potentials)
-
-
+(declare find-cluster-centers)
 
 (def r-a 3.0)
 (def r-b (* 1.5 r-a))
-(def e-max 0.5)
+(def e-max 0.30)
 (def e-min 0.15)
 (def alpha-koeff (/ 4 (Math/pow r-a 2)))
 (def betta-koeff (/ 4 (Math/pow r-b 2)))
@@ -37,10 +36,12 @@
 	; (println ppoints)
 	(def potentials (points-potentials ppoints dist-func))
 	; (doseq [ppoint potentials] (println ppoint))
-	(def first-cluster-potential (max-ppoint potentials))
-	(println first-cluster-potential)
-	(def pdiff (potential-differences ppoints first-cluster-potential dist-func))
-	(doseq [ppoint pdiff] (println ppoint))
+	(def first-cluster-potential-point (max-ppoint potentials))
+	; (println first-cluster-potential)
+	; (def pdiff (potential-differences potentials first-cluster-potential dist-func))
+	; (doseq [ppoint pdiff] (println ppoint))
+	(def centers (find-cluster-centers potentials (first-cluster-potential-point :potential) [] dist-func));[ppoints potential-center centers dist-func]
+	(doseq [center centers] (println center))
 )
 
 (defn r-heming [x y]
@@ -118,4 +119,22 @@
         		(assoc point :potential 0.0)
         		point))
     	points)
+)
+
+(defn minimal-dist [ppoint ppoints dist-func]
+  (Math/sqrt (apply min (map #(dist-func (ppoint :coords) (% :coords)) ppoints))))
+
+(defn find-cluster-centers [ppoints potential-center centers dist-func]
+    (let [max-point (max-ppoint ppoints)
+         pdifferences (potential-differences ppoints max-point dist-func)]
+        (if (> (max-point :potential) (* e-max potential-center))
+          (recur pdifferences potential-center (conj centers max-point) dist-func)
+          (if (< (max-point :potential)  (* e-min potential-center))
+            centers
+            (if (>= (+ 	(/ (minimal-dist max-point centers dist-func) r-a)
+                  		(/ (max-point :potential) potential-center))
+                1)
+              	(recur pdifferences potential-center (conj centers max-point) dist-func)
+              	(recur (clear-potentials pdifferences max-point) potential-center centers dist-func))))
+	)
 )
